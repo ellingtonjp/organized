@@ -1,0 +1,6 @@
+* Headline
+Some text
+===
+* Headline
+
+Some text
