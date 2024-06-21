@@ -1,6 +1,10 @@
 (defvar organized--heading-regexp "^\\(\*+\\)\\([[:space:]]+\\)\\(.*\\)")
 (defvar organized--structure-begin-regexp "^[[:space:]]*#\\+begin_")
 (defvar organized--structure-end-regexp "^[[:space:]]*#\\+end_")
+(defvar organized--drawer-regexp "^[[:space:]]*:.*:[[:space:]]*$")
+(defvar organized--drawer-end-regexp "^[[:blank:]]*:END:[[:blank:]]*$")
+(defvar organized--scheduled-regexp "^[[:blank:]]*SCHEDULED:.*$")
+(defvar organized--deadline-regexp "^[[:blank:]]*DEADLINE:.*$")
 
 ;; note: intentionally not supporting * as a list item!
 (defvar organized--list-item-regexp "^[[:space:]]*\\(- \\|\\+ \\|[0-9]+\\. \\|[0-9]+) \\|[a-zA-Z]+\\. \\|[a-zA-Z]+) \\)")
@@ -51,6 +55,41 @@
 
 (defcustom organized-heading-padding-below 1
   "Number of blank lines below org headings"
+  :type 'integer
+  :group 'organized)
+
+(defcustom organized-heading-padding-between-drawer 0
+  "Blank lines between heading and drawer, if it exists"
+  :type 'integer
+  :group 'organized)
+
+(defcustom organized-heading-padding-between-scheduled 0
+  "Blank lines between heading and scheduled, if it exists"
+  :type 'integer
+  :group 'organized)
+
+(defcustom organized-heading-padding-between-deadline 0
+  "Blank lines between heading and deadline, if it exists"
+  :type 'integer
+  :group 'organized)
+
+(defcustom organized-heading-padding-below-drawer 1
+  "Blank lines after a drawer"
+  :type 'integer
+  :group 'organized)
+
+(defcustom organized-heading-padding-below-scheduled 1
+  "Blank lines after scheduled"
+  :type 'integer
+  :group 'organized)
+
+(defcustom organized-heading-padding-below-deadline 1
+  "Blank lines after deadline"
+  :type 'integer
+  :group 'organized)
+
+(defcustom organized-heading-padding-between-scheduled-deadline 0
+  "Blank lines between schedule and deadline"
   :type 'integer
   :group 'organized)
 
@@ -120,7 +159,7 @@
   (re-search-forward organized--heading-regexp nil t))
 
 (defun organized--previous-non-blank-line ()
-  (beginning-of-line) 			; fixes issue when point is already at EOL
+  (beginning-of-line)	    ; fixes issue when point is already at EOL
   (re-search-backward "^.+$" nil t))
 
 (defun organized--blank-line-p ()
@@ -143,6 +182,116 @@
 	    (organized--first-word heading)
 	    (organized--todo-keywords))
 	   t))))
+
+(defun organized--drawer-line-p ()
+  (save-excursion
+    (beginning-of-line)
+    (looking-at organized--drawer-regexp)))
+
+(defun organized--drawer-end-p ()
+  (save-excursion
+    (beginning-of-line)
+    (looking-at organized--drawer-end-regexp)))
+
+(defun organized--scheduled-p ()
+  (save-excursion
+    (beginning-of-line)
+    (looking-at organized--scheduled-regexp)))
+
+(defun organized--deadline-p ()
+  (save-excursion
+    (beginning-of-line)
+    (looking-at organized--deadline-regexp)))
+
+(defun organized--drawer-beginning-p ()
+  (save-excursion
+    (beginning-of-line)
+    (and (looking-at organized--drawer-regexp)
+	 (not (looking-at organized--drawer-end-regexp)))))
+
+(defun organized--next-end-of-drawer ()
+  (re-search-forward organized--drawer-end-regexp nil t))
+
+(defun organized--next-scheduled ()
+  (re-search-forward organized--scheduled-regexp nil t))
+
+(defun organized--next-deadline ()
+  (re-search-forward organized--deadline-regexp nil t))
+
+;; only finds valid drawers (ie with beginning and end)
+(defun organized--has-immediate-drawer-p ()
+  (save-excursion
+    (forward-line 1)
+    ;; forward until we find a non-blank line or end of buffer
+    (while (and (organized--blank-line-p)
+		(eq (forward-line 1) 0)))
+
+    ;; true if drawer with beginning+end, nil otherwise
+    (if (organized--drawer-beginning-p)
+	(let ((found-header-or-drawer-end nil))
+	  (while (not found-header-or-drawer-end)
+	    (setq forward-result (forward-line 1))
+	    (cond
+	     ((eq forward-result 1) (setq found-header-or-drawer-end t))
+	     ((organized--heading-line-p) (setq found-header-or-drawer-end t))
+	     ((organized--drawer-end-p) (setq found-header-or-drawer-end t))))
+	  (organized--drawer-end-p))
+      nil)))
+
+(defun organized--has-immediate-scheduled-p ()
+  (save-excursion
+    (forward-line 1)
+    ;; forward until we find a non-blank line or end of buffer
+    (while (and (organized--blank-line-p)
+		(eq (forward-line 1) 0)))
+
+    ;; true if on scheduled line, nil otherwise
+    (if (organized--scheduled-p)
+	t
+	(let ((found-scheduled nil))
+	  (while (not found-scheduled)
+	    (cond
+	     ((eq forward-result 1) (setq found-scheduled t))
+	     ((organized--scheduled-p) (setq found-scheduled t)))
+	    (setq forward-result (forward-line 1)))
+	  (organized--scheduled-p)))))
+
+(defun organized--has-immediate-deadline-p ()
+  (save-excursion
+    (forward-line 1)
+    ;; forward until we find a non-blank line or end of buffer
+    (while (and (organized--blank-line-p)
+		(eq (forward-line 1) 0)))
+
+    ;; true if on scheduled line, nil otherwise
+    (if (organized--deadline-p)
+	t
+	(let ((found-deadline nil))
+	  (while (not found-deadline)
+	    (cond
+	     ((eq forward-result 1) (setq found-deadline t))
+	     ((organized--deadline-p) (setq found-deadline t)))
+	    (setq forward-result (forward-line 1)))
+	  (organized--deadline-p)))))
+
+(defun organized--has-immediate-drawer-p ()
+  (save-excursion
+    (forward-line 1)
+    ;; forward until we find a non-blank line or end of buffer
+    (while (and (organized--blank-line-p)
+		(eq (forward-line 1) 0)))
+
+    ;; true if drawer with beginning+end, nil otherwise
+    (if (organized--drawer-beginning-p)
+	(let ((found-header-or-drawer-end nil))
+	  (while (not found-header-or-drawer-end)
+	    (setq forward-result (forward-line 1))
+	    (cond
+	     ((eq forward-result 1) (setq found-header-or-drawer-end t))
+	     ((organized--heading-line-p) (setq found-header-or-drawer-end t))
+	     ((organized--drawer-end-p) (setq found-header-or-drawer-end t))))
+	  (organized--drawer-end-p))
+      nil)))
 
 (defun organized--list-item-line-p ()
   (save-excursion
@@ -225,8 +374,28 @@
 	   organized-heading-padding-above-no-content
 	 organized-heading-padding-above))
 
+    (setq padding-below organized-heading-padding-below)
+    (cond ((organized--has-immediate-drawer-p)
+	   (save-excursion
+	     (setq padding-below organized-heading-padding-between-drawer)
+	     (organized--next-end-of-drawer)
+	     (organized--ensure-blank-lines-below organized-heading-padding-below-drawer)))
+	  ((organized--has-immediate-scheduled-p)
+	   (save-excursion
+	     (setq padding-below organized-heading-padding-between-scheduled)
+	     (organized--next-scheduled)
+	     (if (organized--has-immediate-deadline-p)
+		 (organized--ensure-blank-lines-below organized-heading-padding-between-scheduled-deadline)
+		 (organized--ensure-blank-lines-below organized-heading-padding-below-scheduled))))
+	  ((organized--has-immediate-deadline-p)
+	   (save-excursion
+	     (setq padding-below organized-heading-padding-between-deadline)
+	     (organized--next-deadline)
+	     (if (organized--has-immediate-scheduled-p)
+		 (organized--ensure-blank-lines-below organized-heading-padding-between-scheduled-deadline)
+		 (organized--ensure-blank-lines-below organized-heading-padding-below-deadline)))))
     (organized--ensure-blank-lines-above padding-above)
-    (organized--ensure-blank-lines-below organized-heading-padding-below)))
+    (organized--ensure-blank-lines-below padding-below)))
 
 (defun organized--clean-heading-str (heading-str)
   (replace-regexp-in-string organized--heading-regexp " " heading-str nil nil 1))
