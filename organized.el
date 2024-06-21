@@ -277,8 +277,17 @@
 
 (defun organized-organize ()
   (interactive)
-  (save-excursion
-    (dolist (organizer organized-organizers)
-      (funcall organizer))))
+  (when (derived-mode-p 'org-mode)
+    (save-excursion
+      (dolist (organizer organized-organizers)
+	(funcall organizer)))))
+
+(define-minor-mode organized-mode
+  "Minor mode for autoformatting org files"
+  :lighter " OrgPretty"
+  :global nil
+  (if organized-mode
+      (add-hook 'before-save-hook #'organized-organize nil t)
+    (remove-hook 'before-save-hook #'organized-organize t)))
 
 (provide 'organized)
