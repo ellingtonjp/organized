@@ -267,13 +267,17 @@
 	(forward-line 1)))))
 
 (defun organized-title-case-headings ()
-  (save-excursion
-    (goto-char (point-min))
-    (while (organized--next-heading)
-      (if (or (not (organized--heading-todo-line-p))
-	      (and (organized--heading-todo-line-p)
-		   organized-title-case-todo-headings))
-	  (organized--title-case-line)))))
+  (let ((subword-enabled-p (bound-and-true-p subword-mode)))
+    (save-excursion
+      (message "test")
+      (subword-mode -1)
+      (goto-char (point-min))
+      (while (organized--next-heading)
+	(if (or (not (organized--heading-todo-line-p))
+		(and (organized--heading-todo-line-p)
+		     organized-title-case-todo-headings))
+	    (organized--title-case-line)))
+      (subword-mode subword-enabled-p))))
 
 (defun organized-organize ()
   (interactive)
@@ -281,6 +285,16 @@
     (save-excursion
       (dolist (organizer organized-organizers)
 	(funcall organizer)))))
+
+(defun organized--with-subword-disabled (fn &rest args)
+  "Temporarily disable `subword-mode`, run FN with ARGS, then restore `subword-mode` to its previous state."
+  (let ((subword-mode-enabled (bound-and-true-p subword-mode)))
+    (when subword-mode-enabled
+      (subword-mode -1))
+    (unwind-protect
+        (apply fn args)
+      (when subword-mode-enabled
+        (subword-mode 1)))))
 
 (define-minor-mode organized-mode
   "Minor mode for autoformatting org files"
