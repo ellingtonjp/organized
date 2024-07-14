@@ -230,12 +230,24 @@
       (goto-char line-start)
       (insert new-heading))))
 
+(defun organized--with-subword-disabled (fn &rest args)
+  "Temporarily disable `subword-mode`, run FN with ARGS, then restore `subword-mode` to its previous state."
+  (let ((subword-mode-enabled (bound-and-true-p subword-mode)))
+    (when subword-mode-enabled
+      (subword-mode -1))
+    (unwind-protect
+        (apply fn args)
+      (when subword-mode-enabled
+        (subword-mode 1)))))
+
+;;;###autoload
 (defun organized-pad-headings ()
   (save-excursion
     (goto-char (point-min))
     (while (organized--next-heading)
       (organized--pad-heading))))
 
+;;;###autoload
 (defun organized-remove-leading-whitespace ()
   "Removes leading whitespace from all lines except:
 - lines between #+begin_* and #+end_
@@ -258,6 +270,7 @@
 	  (delete-horizontal-space))
 	(forward-line 1)))))
 
+;;;###autoload
 (defun organized-remove-empty-list-items ()
   (save-excursion
     (goto-char (point-min))
@@ -266,6 +279,7 @@
 	  (kill-whole-line)
 	(forward-line 1)))))
 
+;;;###autoload
 (defun organized-title-case-headings ()
   (let ((subword-enabled-p (bound-and-true-p subword-mode)))
     (save-excursion
@@ -274,11 +288,12 @@
       (goto-char (point-min))
       (while (organized--next-heading)
 	(if (or (not (organized--heading-todo-line-p))
-		(and (organized--heading-todo-line-p)
-		     organized-title-case-todo-headings))
+	       (and (organized--heading-todo-line-p)
+		  organized-title-case-todo-headings))
 	    (organized--title-case-line)))
       (subword-mode subword-enabled-p))))
 
+;;;###autoload
 (defun organized-organize ()
   (interactive)
   (when (derived-mode-p 'org-mode)
@@ -286,16 +301,7 @@
       (dolist (organizer organized-organizers)
 	(funcall organizer)))))
 
-(defun organized--with-subword-disabled (fn &rest args)
-  "Temporarily disable `subword-mode`, run FN with ARGS, then restore `subword-mode` to its previous state."
-  (let ((subword-mode-enabled (bound-and-true-p subword-mode)))
-    (when subword-mode-enabled
-      (subword-mode -1))
-    (unwind-protect
-        (apply fn args)
-      (when subword-mode-enabled
-        (subword-mode 1)))))
-
+;;;###autoload
 (define-minor-mode organized-mode
   "Minor mode for autoformatting org files"
   :lighter " OrgPretty"
