@@ -6,6 +6,7 @@
 (defvar organized--list-item-regexp "^[[:space:]]*\\(- \\|\\+ \\|[0-9]+\\. \\|[0-9]+) \\|[a-zA-Z]+\\. \\|[a-zA-Z]+) \\)")
 (defvar organized--list-item-empty-regexp (concat organized--list-item-regexp "[[:space:]]*$"))
 
+(defvar organized--downcase-ignore '(":.*:"))
 (defvar organized--downcase '(
 			      "a"
 			      "an"
@@ -58,6 +59,11 @@
   :type 'boolean
   :group 'organized)
 
+(defcustom organized-title-case-heading-tags nil
+  "Whether to title case tags"
+  :type 'boolean
+  :group 'organized)
+
 (defcustom organized-organizers
   '(organized-remove-leading-whitespace
     organized-pad-headings
@@ -91,20 +97,24 @@
 
 (defun organized--title-case-line ()
   (save-excursion
-    (beginning-of-line)
-    (let ((end-of-line (line-end-position))
-	(first-word t))
-      (while (and (< (point) end-of-line))
-	(forward-word)
-	(let ((word (thing-at-point 'word)))
-	  (when word
-	    (cond
-	     ((organized--acronym-p word) nil)
-	     (first-word (capitalize-word -1))
-	     ((member (downcase word) organized--downcase)
-	      (downcase-word -1))
-	     (t (capitalize-word -1))))
-	  (setq first-word nil))))))
+    (save-restriction
+      (when (and (not organized-title-case-heading-tags)
+               (re-search-forward org-tag-group-re nil t))
+        (narrow-to-region (pos-bol) (match-beginning 0)))
+      (beginning-of-line)
+      (let ((first-word t))
+        (while (not (eolp))
+	  (forward-word)
+	  (let ((word (thing-at-point 'word)))
+	    (when word
+	      (cond
+               ((string-match-p (car organized--downcase-ignore) word) nil)
+	       ((organized--acronym-p word) nil)
+	       (first-word (capitalize-word -1))
+	       ((and (member (downcase word) organized--downcase))
+	        (downcase-word -1))
+	       (t (capitalize-word -1))))
+	    (setq first-word nil)))))))
 
 (defun organized--next-heading ()
   (re-search-forward organized--heading-regexp nil t))
