@@ -244,36 +244,36 @@
     (forward-line 1)
     ;; forward until we find a non-blank line or end of buffer
     (while (and (organized--blank-line-p)
-		(eq (forward-line 1) 0)))
+                (eq (forward-line 1) 0)))
 
     ;; true if on scheduled line, nil otherwise
     (if (organized--scheduled-p)
-	t
-	(let ((found-scheduled nil))
-	  (while (not found-scheduled)
-	    (setq forward-result (forward-line 1)))
-	    (cond
-	     ((eq forward-result 1) (setq found-scheduled t))
-	     ((organized--scheduled-p) (setq found-scheduled t)))
-	  (organized--scheduled-p)))))
+        t
+      (let ((found-scheduled nil))
+        (while (not found-scheduled)
+          (setq forward-result (forward-line 1))
+          (cond
+           ((eq forward-result 1) (setq found-scheduled t))
+           ((organized--scheduled-p) (setq found-scheduled t))))
+        (organized--scheduled-p)))))
 
 (defun organized--has-immediate-deadline-p ()
   (save-excursion
     (forward-line 1)
     ;; forward until we find a non-blank line or end of buffer
     (while (and (organized--blank-line-p)
-		(eq (forward-line 1) 0)))
+                (eq (forward-line 1) 0)))
 
     ;; true if on scheduled line, nil otherwise
     (if (organized--deadline-p)
-	t
-	(let ((found-deadline nil))
-	  (while (not found-deadline)
-	    (setq forward-result (forward-line 1)))
-	    (cond
-	     ((eq forward-result 1) (setq found-deadline t))
-	     ((organized--deadline-p) (setq found-deadline t)))
-	  (organized--deadline-p)))))
+        t
+      (let ((found-deadline nil))
+        (while (not found-deadline)
+          (setq forward-result (forward-line 1))
+          (cond
+           ((eq forward-result 1) (setq found-deadline t))
+           ((organized--deadline-p) (setq found-deadline t))))
+        (organized--deadline-p)))))
 
 (defun organized--has-immediate-drawer-p ()
   (save-excursion
