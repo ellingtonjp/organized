@@ -135,10 +135,11 @@
     keywords))
 
 (defun organized--title-case-line ()
-  (save-excursion
-    (save-restriction
+  (save-excursion 
+    (save-restriction 
+      (end-of-line)
       (when (and (not organized-title-case-heading-tags)
-               (re-search-forward org-tag-group-re nil t))
+               (re-search-backward org-tag-group-re nil t))
         (narrow-to-region (pos-bol) (match-beginning 0)))
       (beginning-of-line)
       (let ((first-word t))
@@ -462,7 +463,6 @@
 (defun organized-title-case-headings ()
   (let ((subword-enabled-p (bound-and-true-p subword-mode)))
     (save-excursion
-      (message "test")
       (subword-mode -1)
       (goto-char (point-min))
       (while (organized--next-heading)
