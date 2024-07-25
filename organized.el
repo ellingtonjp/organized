@@ -251,10 +251,10 @@
 	t
 	(let ((found-scheduled nil))
 	  (while (not found-scheduled)
+	    (setq forward-result (forward-line 1)))
 	    (cond
 	     ((eq forward-result 1) (setq found-scheduled t))
 	     ((organized--scheduled-p) (setq found-scheduled t)))
-	    (setq forward-result (forward-line 1)))
 	  (organized--scheduled-p)))))
 
 (defun organized--has-immediate-deadline-p ()
@@ -269,10 +269,10 @@
 	t
 	(let ((found-deadline nil))
 	  (while (not found-deadline)
+	    (setq forward-result (forward-line 1)))
 	    (cond
 	     ((eq forward-result 1) (setq found-deadline t))
 	     ((organized--deadline-p) (setq found-deadline t)))
-	    (setq forward-result (forward-line 1)))
 	  (organized--deadline-p)))))
 
 (defun organized--has-immediate-drawer-p ()
