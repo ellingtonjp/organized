@@ -323,6 +323,12 @@
 	(setq n (1+ n)))
       n)))
 
+(defun organized--safe-kill-line ()
+  "Attempt to delete line but error if it is not blank."
+  (if (organized--blank-line-p)
+      (kill-whole-line)
+    (error "attempting to delete a non-blank line")))
+
 (defun organized--count-blank-lines-below ()
   (save-excursion
     (let ((n 0))
@@ -333,6 +339,23 @@
 	(setq n (1+ n)))
       n)))
 
+(defun organized--previous-char-is-whitespace ()
+  "Return non-nil if the char before point is whitespace (space,
+ tab, newline, carriage return)."
+  (let ((c (char-before)))
+    (and c
+         (or (char-equal c ?\s)
+             (char-equal c ?\t)
+             (char-equal c ?\n)
+             (char-equal c ?\r)))))
+
+(defun organized--safe-backward-delete (n)
+  "Delete backwards N characters but error if any are
+whitespace (defined by organized--previous-char-is-whitespace)."
+  (if (organized--previous-char-is-whitespace)
+      (delete-backward-char n)
+    (error "attempting to delete non-blank character")))
+
 (defun organized--ensure-blank-lines-above (n)
   (setq col (current-column))
   (beginning-of-line)
@@ -342,7 +365,7 @@
   ;; lines with spaces/tabs/other whitespace. Instead, just loop
   ;; til its all gone.
   (while (> (organized--count-blank-lines-above) n)
-    (delete-backward-char 1))
+    (organized--safe-backward-delete 1))
 
   ;; we don't have the same whitespace problem here, but lets
   ;; loop for consistency.
@@ -354,8 +377,8 @@
 (defun organized--ensure-blank-lines-below (n)
   (while (> (organized--count-blank-lines-below) n)
     (save-excursion
-      (if (equal 0 (forward-line))  ; be sure we moved before deleting
-	  (kill-whole-line))))
+      (when (equal 0 (forward-line)) ; be sure we moved before deleting
+        (organized--safe-kill-line))))
   (while (< (organized--count-blank-lines-below) n)
     (save-excursion
       (forward-line 1)
@@ -420,14 +443,12 @@
       (when subword-mode-enabled
         (subword-mode 1)))))
 
-;;;###autoload
 (defun organized-pad-headings ()
   (save-excursion
     (goto-char (point-min))
     (while (organized--next-heading)
       (organized--pad-heading))))
 
-;;;###autoload
 (defun organized-remove-leading-whitespace ()
   "Removes leading whitespace from all lines except:
 - lines between #+begin_* and #+end_
@@ -450,16 +471,14 @@
 	  (delete-horizontal-space))
 	(forward-line 1)))))
 
-;;;###autoload
 (defun organized-remove-empty-list-items ()
   (save-excursion
     (goto-char (point-min))
     (while (not (eobp))
       (if (organized--empty-list-item-line-p)
-	  (kill-whole-line)
+          (organized--safe-kill-line)
 	(forward-line 1)))))
 
-;;;###autoload
 (defun organized-title-case-headings ()
   (let ((subword-enabled-p (bound-and-true-p subword-mode)))
     (save-excursion
@@ -477,13 +496,15 @@
   (interactive)
   (when (derived-mode-p 'org-mode)
     (save-excursion
-      (dolist (organizer organized-organizers)
-	(funcall organizer)))))
+      (org-save-outline-visibility t
+        (org-fold-show-all)
+        (dolist (organizer organized-organizers)
+          (funcall organizer))))))
 
 ;;;###autoload
 (define-minor-mode organized-mode
   "Minor mode for autoformatting org files"
-  :lighter " OrgPretty"
+  :lighter " Organized"
   :global nil
   (if organized-mode
       (add-hook 'before-save-hook #'organized-organize nil t)
